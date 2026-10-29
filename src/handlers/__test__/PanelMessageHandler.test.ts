@@ -18,7 +18,10 @@ import {
   getNearestDayWithCreatedNote,
   getNearestDayWithModifiedNote,
 } from "../search/GetNearestDayWithNote";
-import { triggerAllSettingsCallbacks } from "../../settings";
+import {
+  getSettingsSnapshot,
+  triggerAllSettingsCallbacks,
+} from "../../settings";
 
 jest.mock(
   "api",
@@ -58,6 +61,7 @@ jest.mock("../../settings");
 const mockedTriggerAllSettingsCallbacks = jest.mocked(
   triggerAllSettingsCallbacks
 );
+const mockedGetSettingsSnapshot = jest.mocked(getSettingsSnapshot);
 
 describe("PanelMessageHandler", () => {
   const mockNote1: Note = {
@@ -239,5 +243,16 @@ describe("PanelMessageHandler", () => {
     handlePanelMessage(msg);
 
     expect(mockedTriggerAllSettingsCallbacks).toHaveBeenCalled();
+  });
+
+  it("returns a settings snapshot", async () => {
+    mockedGetSettingsSnapshot.mockResolvedValue({
+      calendarOnlyMode: true,
+    });
+
+    const result = await handlePanelMessage({ type: MsgType.GetSettings });
+
+    expect(mockedGetSettingsSnapshot).toHaveBeenCalled();
+    expect(result).toStrictEqual({ calendarOnlyMode: true });
   });
 });

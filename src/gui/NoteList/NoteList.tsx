@@ -177,7 +177,7 @@ function NoteList(props: NoteListProps) {
               selectedNoteId={selectedNote?.id}
               sortBy={sortBy}
               sortDirection={sortDirection}
-              key={`RelatedNotes:{currentDate.toISOString()}`}
+              key={`RelatedNotes:${currentDate.toISOString()}`}
               primaryTextStrategy={(note) =>
                 `${moment(note.createdTime).format("LT")}`
               }
@@ -190,7 +190,7 @@ function NoteList(props: NoteListProps) {
           selectedNoteId={selectedNote?.id}
           sortBy={sortBy}
           sortDirection={sortDirection}
-          key={`CreatedNotes:{currentDate.toISOString()}`}
+          key={`CreatedNotes:${currentDate.toISOString()}`}
           primaryTextStrategy={(note) =>
             `${moment(note.createdTime).format("LT")}`
           }
@@ -203,7 +203,7 @@ function NoteList(props: NoteListProps) {
               selectedNoteId={selectedNote?.id}
               sortBy={sortBy}
               sortDirection={sortDirection}
-              key={`ModifiedNotes:{currentDate.toISOString()}`}
+              key={`ModifiedNotes:${currentDate.toISOString()}`}
               primaryTextStrategy={(note) =>
                 `${moment(note.updatedTime).format("LT")}`
               }

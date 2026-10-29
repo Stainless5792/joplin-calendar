@@ -9,7 +9,8 @@ import {
   onSettingChange,
   registerPanelAlertOnSettingChange,
 } from "./settings";
-import { SHOW_CALENDAR_BUTTON } from "@constants/Settings";
+import { CALENDAR_ONLY_MODE, SHOW_CALENDAR_BUTTON } from "@constants/Settings";
+import { initCalendarOnlyMode, setCalendarOnly } from "./handlers/AppMode";
 
 joplin.plugins.register({
   onStart: async function () {
@@ -22,6 +23,11 @@ joplin.plugins.register({
 
     await registerCommands(panel);
     await registerSettings();
+
+    await initCalendarOnlyMode();
+    await onSettingChange(CALENDAR_ONLY_MODE, (value) =>
+      setCalendarOnly(value)
+    );
 
     await onSettingChange(SHOW_CALENDAR_BUTTON, async (value) => {
       if (value) {

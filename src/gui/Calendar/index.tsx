@@ -3,6 +3,7 @@ import React, {
   KeyboardEvent as ReactKeyboardEvent,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import styled from "styled-components";
@@ -17,6 +18,7 @@ import { PluginPostMessage } from "@constants/pluginMessageTypes";
 import useWebviewApiOnMessage from "../hooks/useWebViewApiOnMessage";
 import useOnSettingsChange from "../hooks/useOnSettingsChange";
 import { WEEK_START_DAY, WeekStartDay } from "@constants/Settings";
+import { getWeekNumberOfRow } from "../utils/weekNumber";
 
 const DAYS_IN_A_WEEK = 7;
 const CALENDAR_ROWS = 6;
@@ -38,6 +40,13 @@ interface CalendarProps {
   currentDay?: moment.Moment;
   // Statistics map with `MM/DD/YYYY` as key and arbitrary number as value.
   statistics?: Record<string, number>;
+  // Whether to render note-count dots below each date.
+  showDots?: boolean;
+  // Whether to render the ISO week number next to the month title.
+  showWeekNumber?: boolean;
+  // Whether to render a local "Today" button in the calendar controls.
+  showToday?: boolean;
+  onTodayClick?: () => void;
   onDateSelect?: (date: moment.Moment) => void;
   onNextMonthClick?: () => void;
   onNextYearClick?: () => void;
@@ -54,6 +63,10 @@ function Calendar({
   shownMonth: shownMonthProp,
   currentDay: currentDayProp,
   statistics,
+  showDots = true,
+  showWeekNumber = false,
+  showToday = false,
+  onTodayClick,
   onDateSelect,
   onNextMonthClick,
   onNextYearClick,
@@ -83,6 +96,11 @@ function Calendar({
   const weekStartDay = useOnSettingsChange<WeekStartDay>(
     WEEK_START_DAY,
     WeekStartDay.Sunday
+  );
+
+  const weekInfo = useMemo(
+    () => getWeekNumberOfRow(selectedDate, weekStartDay),
+    [selectedDate, weekStartDay]
   );
 
   const currentMonthFirstDay = shownMonth.startOf("month");
@@ -120,11 +138,11 @@ function Calendar({
 
       let numberOfDots = 0;
 
-      if (statistics && statistics[simpleWorkingDate]) {
+      if (showDots && statistics && statistics[simpleWorkingDate]) {
         numberOfDots = calculateNumberOfDots(statistics[simpleWorkingDate]);
       }
 
-      numberOfDots = Math.min(numberOfDots, 4);
+      numberOfDots = showDots ? Math.min(numberOfDots, 4) : 0;
 
       cols.push(
         <CalendarCell
@@ -134,6 +152,7 @@ function Calendar({
           currentDay={currentDay.isSame(workingDate, "date")}
           onSelect={onDateCellSelected}
           numberOfDots={numberOfDots}
+          showDots={showDots}
         />
       );
       workingDate.add(1, "day");
@@ -147,6 +166,10 @@ function Calendar({
         <thead>
           <CalendarControls
             shownMonth={shownMonth}
+            selectedDate={selectedDate}
+            weekInfo={showWeekNumber ? weekInfo : undefined}
+            showToday={showToday}
+            onTodayClicked={onTodayClick}
             onNextMonthClicked={onNextMonthClick}
             onNextYearClicked={onNextYearClick}
             onPreviousMonthClicked={onPreviousMonthClick}

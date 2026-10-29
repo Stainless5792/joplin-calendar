@@ -10,6 +10,7 @@ export enum MsgType {
   NoteChanged,
   SettingChanged,
   TriggerAllSettingsCallbacks,
+  GetSettings,
 }
 
 export default MsgType;

@@ -8,6 +8,7 @@ import "@testing-library/jest-dom/extend-expect";
 import MsgType from "@constants/messageTypes";
 import useNoteSearchTypes from "../../hooks/useNoteSearchTypes";
 import NoteSearchTypes from "@constants/NoteSearchTypes";
+import { resetWebviewApiMessageDispatcherForTests } from "../../hooks/useWebViewApiOnMessage";
 
 const DOCUMENT_FOLLOWING = 4;
 
@@ -32,6 +33,7 @@ function wrapper(children: React.JSX.Element) {
 
 describe("NoteList", () => {
   beforeEach(() => {
+    resetWebviewApiMessageDispatcherForTests();
     jest.clearAllMocks();
 
     mockedUseNoteSearchTypes.mockReturnValue([NoteSearchTypes.Created]);

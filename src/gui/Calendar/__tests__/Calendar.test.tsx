@@ -79,6 +79,61 @@ describe("calendar", () => {
     }
   });
 
+  it("does not render note dots when showDots is false", () => {
+    const date = moment("May-29-2023", "MMM-DD-YYYY");
+    const { container } = render(
+      <Calendar
+        selectedDate={date}
+        statistics={{ [date.format("L")]: 9 }}
+        showDots={false}
+      />
+    );
+
+    expect(container.querySelectorAll("span")).toHaveLength(0);
+  });
+
+  it("renders one dot per three notes", () => {
+    const date = moment("May-29-2023", "MMM-DD-YYYY");
+    const { container } = render(
+      <Calendar selectedDate={date} statistics={{ [date.format("L")]: 9 }} />
+    );
+
+    expect(container.querySelectorAll("span")).toHaveLength(3);
+  });
+
+  it("shows the week number only when requested", () => {
+    mockedUseOnSettingsChange.mockReturnValue(WeekStartDay.Monday);
+
+    const date = moment("May-29-2023", "MMM-DD-YYYY");
+    const { rerender } = render(<Calendar selectedDate={date} />);
+
+    expect(screen.queryByLabelText("week-number")).toBeNull();
+
+    rerender(<Calendar selectedDate={date} showWeekNumber />);
+
+    const weekBadge = screen.getByLabelText("week-number");
+    expect(weekBadge).toHaveTextContent("(W22)");
+    expect(weekBadge.parentElement).toHaveTextContent("2023/05/29(W22)");
+  });
+
+  it("shows the today button only when requested", () => {
+    const date = moment("May-29-2023", "MMM-DD-YYYY");
+    const onTodayClick = jest.fn();
+    const { rerender } = render(<Calendar selectedDate={date} />);
+
+    expect(screen.queryByRole("button", { name: "calendar-today" })).toBeNull();
+
+    rerender(
+      <Calendar selectedDate={date} showToday onTodayClick={onTodayClick} />
+    );
+
+    act(() => {
+      screen.getByRole("button", { name: "calendar-today" }).click();
+    });
+
+    expect(onTodayClick).toHaveBeenCalled();
+  });
+
   it("calls callback when next month clicked", () => {
     const nextMonthCallback = jest.fn();
     const date = moment("May-29-2023", "MMM-DD-YYYY");

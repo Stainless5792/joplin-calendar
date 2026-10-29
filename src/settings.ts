@@ -2,6 +2,7 @@ import joplin from "api";
 import { SettingItemType } from "api/types";
 import MsgType from "@constants/messageTypes";
 import {
+  CALENDAR_ONLY_MODE,
   FILTER_NOTES_BY_NOTEBOOK,
   SHOW_CALENDAR_BUTTON,
   SHOW_MODIFIED_NOTES,
@@ -72,6 +73,17 @@ export async function registerSettings() {
       value: WeekStartDay.Sunday,
       section: SETTINGS_SECTION_ID,
     },
+    [CALENDAR_ONLY_MODE]: {
+      label: "Calendar Only Mode",
+      description:
+        "Show only the calendar. Hides the note list and note-count dots, " +
+        "and disables all note searches for minimal overhead. Enabled by " +
+        "default; turn it off to show the note list and dots.",
+      public: true,
+      type: SettingItemType.Bool,
+      value: true,
+      section: SETTINGS_SECTION_ID,
+    },
   });
 
   await joplin.settings.onChange(async ({ keys }) => {
@@ -91,6 +103,36 @@ export async function registerPanelAlertOnSettingChange(panelHandle: string) {
   await onSettingChangeAlertPanel(panelHandle, SHOW_RELATED_NOTES);
   await onSettingChangeAlertPanel(panelHandle, FILTER_NOTES_BY_NOTEBOOK);
   await onSettingChangeAlertPanel(panelHandle, WEEK_START_DAY);
+  await onSettingChangeAlertPanel(panelHandle, CALENDAR_ONLY_MODE);
+}
+
+const PANEL_SETTINGS_KEYS = [
+  SHOW_CALENDAR_BUTTON,
+  SHOW_MODIFIED_NOTES,
+  SHOW_RELATED_NOTES,
+  FILTER_NOTES_BY_NOTEBOOK,
+  WEEK_START_DAY,
+  CALENDAR_ONLY_MODE,
+];
+
+/**
+ * Get a snapshot of all settings used by the panel.
+ *
+ * Used by the webview to initialize itself without triggering any note
+ * searches before the actual mode is known.
+ */
+export async function getSettingsSnapshot(): Promise<Record<string, any>> {
+  const values = await Promise.all(
+    PANEL_SETTINGS_KEYS.map((key) => joplin.settings.value(key))
+  );
+
+  return PANEL_SETTINGS_KEYS.reduce<Record<string, any>>(
+    (snapshot, key, index) => {
+      snapshot[key] = values[index];
+      return snapshot;
+    },
+    {}
+  );
 }
 
 export async function triggerAllSettingsCallbacks() {

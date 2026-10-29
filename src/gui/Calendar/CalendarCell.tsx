@@ -45,6 +45,7 @@ export interface CalendarCellProps {
   selected?: boolean;
   currentDay?: boolean;
   numberOfDots?: number;
+  showDots?: boolean;
   onSelect?: (date: moment.Moment) => void;
 }
 
@@ -54,6 +55,7 @@ function CalendarCell({
   selected,
   currentDay,
   numberOfDots,
+  showDots = true,
   onSelect,
 }: CalendarCellProps) {
   const onClickCallback = useCallback(() => {
@@ -68,7 +70,7 @@ function CalendarCell({
       currentDay={currentDay}
     >
       {date.format("D")}
-      <DotBar numberOfDots={numberOfDots ?? 0} />
+      {showDots && <DotBar numberOfDots={numberOfDots ?? 0} />}
     </StyledCell>
   );
 }

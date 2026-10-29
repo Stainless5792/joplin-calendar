@@ -20,7 +20,7 @@ import NoteSearchTypes from "@constants/NoteSearchTypes";
 import MonthStatistics from "@constants/MonthStatistics";
 import { GetNearestDayWithNoteResponse } from "@constants/GetNearestDayWithNote";
 import { uniqBy } from "lodash";
-import { triggerAllSettingsCallbacks } from "../settings";
+import { getSettingsSnapshot, triggerAllSettingsCallbacks } from "../settings";
 import { buildSearchConstraints } from "./search/SearchConstraints";
 
 async function openNote(id: string) {
@@ -228,6 +228,10 @@ async function handlePanelMessage(message) {
 
     case MsgType.TriggerAllSettingsCallbacks: {
       return await triggerAllSettingsCallbacks();
+    }
+
+    case MsgType.GetSettings: {
+      return await getSettingsSnapshot();
     }
 
     default: {

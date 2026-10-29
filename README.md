@@ -7,6 +7,10 @@ This plugin for [Joplin](https://joplinapp.org/) adds a simple calendar which al
 # ⭐ Features
 
 - The plugin includes a **calendar** and a **notes list**.
+- **Calendar Only Mode** is enabled by default. It shows just the calendar,
+  skips all note searches, and displays the ISO week number next to the month
+  (for example `W44`; a week crossing New Year is shown as `W52/W1`). Disable
+  it in the plugin settings to show the note list and note-count dots again.
 
 ## 📆 Calendar
 

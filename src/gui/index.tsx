@@ -1,6 +1,7 @@
 import React, {
   KeyboardEvent as ReactKeyboardEvent,
   useCallback,
+  useEffect,
   useState,
 } from "react";
 import { render } from "react-dom";
@@ -16,6 +17,7 @@ import {
 } from "@constants/GetNearestDayWithNote";
 import MsgType from "@constants/messageTypes";
 import useNoteSearchTypes from "./hooks/useNoteSearchTypes";
+import useCalendarOnlyMode from "./hooks/useCalendarOnlyMode";
 import NoteSearchTypes from "@constants/NoteSearchTypes";
 
 const queryClient = new QueryClient();
@@ -64,17 +66,25 @@ function App() {
   const nextMonth = shownMonth.clone().add(1, "month");
 
   const noteSearchTypes = useNoteSearchTypes();
+  const calendarOnly = useCalendarOnlyMode();
+  const dataEnabled = !calendarOnly;
 
   const { data: previousMonthStats, refetch: refetchPreviousMonthStats } =
-    useGetMonthStatistics(previousMonth.clone(), noteSearchTypes);
+    useGetMonthStatistics(previousMonth.clone(), noteSearchTypes, {
+      enabled: dataEnabled,
+    });
   const { data: shownMonthStats, refetch: refetchShownMonthStats } =
-    useGetMonthStatistics(shownMonth.clone(), noteSearchTypes);
+    useGetMonthStatistics(shownMonth.clone(), noteSearchTypes, {
+      enabled: dataEnabled,
+    });
   const { data: nextMonthStats, refetch: refetchNextMonthStats } =
-    useGetMonthStatistics(nextMonth.clone(), noteSearchTypes);
+    useGetMonthStatistics(nextMonth.clone(), noteSearchTypes, {
+      enabled: dataEnabled,
+    });
 
   let statistics: Record<string, number> = {};
 
-  if (previousMonthStats && shownMonthStats && nextMonthStats) {
+  if (dataEnabled && previousMonthStats && shownMonthStats && nextMonthStats) {
     statistics = {
       ...previousMonthStats.notesPerDay,
       ...shownMonthStats.notesPerDay,
@@ -87,9 +97,35 @@ function App() {
     setShownMonth(date);
   };
 
+  /**
+   * In calendar-only mode keep the selected date in the month being viewed,
+   * so the week number always describes the visible calendar.
+   */
+  const moveShownMonth = (nextMonth: moment.Moment) => {
+    setShownMonth(nextMonth);
+    if (calendarOnly) {
+      const day = Math.min(selectedDate.date(), nextMonth.daysInMonth());
+      setSelectedDateBase(nextMonth.clone().date(day));
+    }
+  };
+
+  useEffect(() => {
+    if (!calendarOnly) {
+      return;
+    }
+    if (!selectedDate.isSame(shownMonth, "month")) {
+      const day = Math.min(selectedDate.date(), shownMonth.daysInMonth());
+      setSelectedDateBase(shownMonth.clone().date(day));
+    }
+  }, [calendarOnly, selectedDate, shownMonth]);
+
   const onCalendarKeyBoardNavigation = useCallback(
     async (event: ReactKeyboardEvent) => {
       if (event.ctrlKey) {
+        if (!dataEnabled) {
+          return;
+        }
+
         let date: moment.Moment | null;
         if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
           date = await getNearestPastDayWithNote(selectedDate, noteSearchTypes);
@@ -118,7 +154,7 @@ function App() {
         setSelectedDate(selectedDate.clone().add(1, "week"));
       }
     },
-    [selectedDate, setSelectedDate, noteSearchTypes]
+    [dataEnabled, selectedDate, setSelectedDate, noteSearchTypes]
   );
 
   return (
@@ -126,57 +162,65 @@ function App() {
       <Calendar
         selectedDate={selectedDate}
         shownMonth={shownMonth}
-        statistics={statistics}
+        statistics={dataEnabled ? statistics : undefined}
+        showDots={dataEnabled}
+        showWeekNumber={calendarOnly}
+        showToday={calendarOnly}
+        onTodayClick={() => setSelectedDate(moment())}
         onDateSelect={(date) => setSelectedDate(date)}
         onNextMonthClick={() => {
-          setShownMonth(shownMonth.clone().add(1, "month"));
+          moveShownMonth(shownMonth.clone().add(1, "month"));
         }}
         onNextYearClick={() => {
-          setShownMonth(shownMonth.clone().add(1, "year"));
+          moveShownMonth(shownMonth.clone().add(1, "year"));
         }}
         onPreviousMonthClick={() => {
-          setShownMonth(shownMonth.clone().subtract(1, "month"));
+          moveShownMonth(shownMonth.clone().subtract(1, "month"));
         }}
         onPreviousYearClick={() => {
-          setShownMonth(shownMonth.clone().subtract(1, "year"));
+          moveShownMonth(shownMonth.clone().subtract(1, "year"));
         }}
         onKeyboardNavigation={onCalendarKeyBoardNavigation}
       />
-      <hr />
-      <NoteList
-        currentDate={selectedDate}
-        onNextDayClick={() => {
-          const newDate = selectedDate.clone().add(1, "day");
-          setSelectedDate(newDate);
-        }}
-        onNextNoteDayClick={async () => {
-          let date = await getNearestFutureDayWithNote(
-            selectedDate,
-            noteSearchTypes
-          );
-          if (!date) {
-            return;
-          }
-          setSelectedDate(date);
-        }}
-        onPreviousDayClick={() => {
-          const newDate = selectedDate.clone().subtract(1, "day");
-          setSelectedDate(newDate);
-        }}
-        onPreviousNoteDayClick={async () => {
-          let date = await getNearestPastDayWithNote(
-            selectedDate,
-            noteSearchTypes
-          );
-          if (!date) {
-            return;
-          }
-          setSelectedDate(date);
-        }}
-        onTodayClick={() => {
-          setSelectedDate(moment());
-        }}
-      />
+      {dataEnabled && (
+        <>
+          <hr />
+          <NoteList
+            currentDate={selectedDate}
+            onNextDayClick={() => {
+              const newDate = selectedDate.clone().add(1, "day");
+              setSelectedDate(newDate);
+            }}
+            onNextNoteDayClick={async () => {
+              let date = await getNearestFutureDayWithNote(
+                selectedDate,
+                noteSearchTypes
+              );
+              if (!date) {
+                return;
+              }
+              setSelectedDate(date);
+            }}
+            onPreviousDayClick={() => {
+              const newDate = selectedDate.clone().subtract(1, "day");
+              setSelectedDate(newDate);
+            }}
+            onPreviousNoteDayClick={async () => {
+              let date = await getNearestPastDayWithNote(
+                selectedDate,
+                noteSearchTypes
+              );
+              if (!date) {
+                return;
+              }
+              setSelectedDate(date);
+            }}
+            onTodayClick={() => {
+              setSelectedDate(moment());
+            }}
+          />
+        </>
+      )}
     </>
   );
 }

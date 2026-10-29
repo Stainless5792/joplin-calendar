@@ -2,9 +2,12 @@ import Note from "@constants/Note";
 import MsgType from "@constants/messageTypes";
 import { useQuery } from "@tanstack/react-query";
 import useWebviewApiOnMessage from "./useWebViewApiOnMessage";
-import { boolean } from "yargs";
 
-function useSelectedNote() {
+interface UseSelectedNoteOptions {
+  enabled?: boolean;
+}
+
+function useSelectedNote({ enabled = true }: UseSelectedNoteOptions = {}) {
   const { data, refetch } = useQuery<Note>({
     queryKey: ["selectedNote"],
     queryFn: async () => {
@@ -12,9 +15,14 @@ function useSelectedNote() {
         type: MsgType.GetSelectedNote,
       });
     },
+    enabled,
   });
 
   useWebviewApiOnMessage((data) => {
+    if (!enabled) {
+      return;
+    }
+
     const message = data.message;
     if (
       message.type === MsgType.NoteChanged ||
