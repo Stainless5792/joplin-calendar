@@ -14,6 +14,7 @@ const CopyPlugin = require("copy-webpack-plugin");
 const WebpackOnBuildPlugin = require("on-build-webpack");
 const tar = require("tar");
 const glob = require("glob");
+const webpack = require("webpack");
 const execSync = require("child_process").execSync;
 
 const rootDir = path.resolve(__dirname);
@@ -182,11 +183,27 @@ const baseConfig = {
     rules: [
       {
         test: /\.tsx?$/,
-        use: "ts-loader",
+        // tsconfig.webpack.json emits ES modules so webpack can tree-shake
+        // (react-icons would otherwise be bundled in full). tsconfig.json is
+        // kept as CommonJS for jest/ts-jest.
+        use: {
+          loader: "ts-loader",
+          options: {
+            configFile: path.resolve(rootDir, "tsconfig.webpack.json"),
+          },
+        },
         exclude: /node_modules/,
       },
     ],
   },
+  plugins: [
+    // The plugin never calls moment.locale(), so all bundled locales are dead
+    // weight (~240KB minified per bundle).
+    new webpack.IgnorePlugin({
+      resourceRegExp: /^\.\/locale$/,
+      contextRegExp: /moment$/,
+    }),
+  ],
 };
 
 const pluginConfig = Object.assign({}, baseConfig, {
@@ -205,6 +222,7 @@ const pluginConfig = Object.assign({}, baseConfig, {
     path: distDir,
   },
   plugins: [
+    ...baseConfig.plugins,
     new CopyPlugin({
       patterns: [
         {
