@@ -11,6 +11,13 @@ This plugin for [Joplin](https://joplinapp.org/) adds a simple calendar which al
   skips all note searches, and displays the ISO week number next to the month
   (for example `W44`; a week crossing New Year is shown as `W52/W1`). Disable
   it in the plugin settings to show the note list and note-count dots again.
+- **Chinese public holidays** (2025–2026) are highlighted in Calendar Only Mode:
+  statutory holidays are tinted red with a filled corner dot, make-up workdays
+  (调休) are tinted blue with a hollow corner marker. Hover a day to see the
+  holiday name. Toggle this with the "Show Chinese Public Holidays" setting;
+  coverage, source URLs and the last import are shown under "Holiday Data
+  Status", and data can be updated by importing a JSON file without
+  repackaging.
 
 ## 📆 Calendar
 
@@ -73,6 +80,51 @@ Alternatively, to automatically rebuild the plugin on source code changes, run `
 ## Testing the plugin
 
 Jest is used for unit tests. Run them with: `npm run test`.
+
+## Updating Chinese holiday data
+
+Bundled data lives in `src/gui/holidays/data.ts` and is generated from
+[holiday-cn](https://github.com/NateScarlet/holiday-cn) (MIT). After the State
+Council publishes next year's schedule, regenerate it:
+
+```bash
+npm run holidays:update -- 2026 2027
+```
+
+The covered years and source URLs are also shown in the plugin settings.
+
+### Updating without repackaging
+
+The plugin can import holiday data at runtime, so new years do not require a
+new `.jpl`:
+
+- **Chinese Holiday Data File** imports a holiday-cn JSON file on desktop. It
+  can contain one year object or an array of them.
+- **Chinese Holiday JSON URL** shows the direct URL for the next useful year
+  (for example 2027); the description lists the other years and the jsDelivr
+  mirror. Copy it into a browser to check whether the JSON file is available,
+  then import the downloaded file.
+- **Holiday Data Status** shows the coverage, source, last import and source
+  URLs currently in use.
+- No network requests are made. Imported data overrides bundled data; clearing
+  the file setting returns to the bundled data.
+- File import is desktop-only (Joplin does not support file pickers on mobile).
+
+## Releasing a new version
+
+`npm run dist` only builds; it never changes the version, so `npm run watch`
+cannot bump it on every rebuild. To bump and build in one step:
+
+```bash
+npm run release           # patch: 1.3.0 -> 1.3.1
+npm run release -- minor  # minor: 1.3.0 -> 1.4.0
+npm run release -- major  # major: 1.3.0 -> 2.0.0
+```
+
+The bump updates `package.json`, `src/manifest.json` and `package-lock.json`
+before the build, so the generated `.jpl` carries the new version. Use
+`npm run bump-version -- --dry-run` to preview the next version without
+changing anything.
 
 ## Updating the plugin framework
 

@@ -18,6 +18,9 @@ import {
 import MsgType from "@constants/messageTypes";
 import useNoteSearchTypes from "./hooks/useNoteSearchTypes";
 import useCalendarOnlyMode from "./hooks/useCalendarOnlyMode";
+import useOnSettingsChange from "./hooks/useOnSettingsChange";
+import useHolidayData from "./hooks/useHolidayData";
+import { SHOW_CN_HOLIDAYS } from "@constants/Settings";
 import NoteSearchTypes from "@constants/NoteSearchTypes";
 
 const queryClient = new QueryClient();
@@ -67,6 +70,8 @@ function App() {
 
   const noteSearchTypes = useNoteSearchTypes();
   const calendarOnly = useCalendarOnlyMode();
+  const showCnHolidays = useOnSettingsChange<boolean>(SHOW_CN_HOLIDAYS, true);
+  const holidayData = useHolidayData();
   const dataEnabled = !calendarOnly;
 
   const { data: previousMonthStats, refetch: refetchPreviousMonthStats } =
@@ -166,6 +171,8 @@ function App() {
         showDots={dataEnabled}
         showWeekNumber={calendarOnly}
         showToday={calendarOnly}
+        showHolidays={calendarOnly && showCnHolidays}
+        holidayLookup={holidayData.lookup}
         onTodayClick={() => setSelectedDate(moment())}
         onDateSelect={(date) => setSelectedDate(date)}
         onNextMonthClick={() => {

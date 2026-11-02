@@ -21,6 +21,7 @@ import MonthStatistics from "@constants/MonthStatistics";
 import { GetNearestDayWithNoteResponse } from "@constants/GetNearestDayWithNote";
 import { uniqBy } from "lodash";
 import { getSettingsSnapshot, triggerAllSettingsCallbacks } from "../settings";
+import { getHolidayData } from "../holidayData";
 import { buildSearchConstraints } from "./search/SearchConstraints";
 
 async function openNote(id: string) {
@@ -232,6 +233,10 @@ async function handlePanelMessage(message) {
 
     case MsgType.GetSettings: {
       return await getSettingsSnapshot();
+    }
+
+    case MsgType.GetHolidayData: {
+      return await getHolidayData();
     }
 
     default: {

@@ -19,6 +19,7 @@ import useWebviewApiOnMessage from "../hooks/useWebViewApiOnMessage";
 import useOnSettingsChange from "../hooks/useOnSettingsChange";
 import { WEEK_START_DAY, WeekStartDay } from "@constants/Settings";
 import { getWeekNumberOfRow } from "../utils/weekNumber";
+import { getCnHoliday, type CnHolidayLookup } from "../holidays";
 
 const DAYS_IN_A_WEEK = 7;
 const CALENDAR_ROWS = 6;
@@ -46,6 +47,10 @@ interface CalendarProps {
   showWeekNumber?: boolean;
   // Whether to render a local "Today" button in the calendar controls.
   showToday?: boolean;
+  // Whether to highlight Chinese public holidays and make-up workdays.
+  showHolidays?: boolean;
+  // Holiday lookup, defaults to the bundled holiday data.
+  holidayLookup?: CnHolidayLookup;
   onTodayClick?: () => void;
   onDateSelect?: (date: moment.Moment) => void;
   onNextMonthClick?: () => void;
@@ -66,6 +71,8 @@ function Calendar({
   showDots = true,
   showWeekNumber = false,
   showToday = false,
+  showHolidays = false,
+  holidayLookup = getCnHoliday,
   onTodayClick,
   onDateSelect,
   onNextMonthClick,
@@ -153,6 +160,11 @@ function Calendar({
           onSelect={onDateCellSelected}
           numberOfDots={numberOfDots}
           showDots={showDots}
+          holiday={
+            showHolidays && inCurrentMonth
+              ? holidayLookup(workingDate)
+              : undefined
+          }
         />
       );
       workingDate.add(1, "day");

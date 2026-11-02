@@ -1,19 +1,43 @@
 import joplin from "api";
-import { SettingItemType } from "api/types";
+import { SettingItemSubType, SettingItemType } from "api/types";
 import MsgType from "@constants/messageTypes";
 import {
   CALENDAR_ONLY_MODE,
+  CN_HOLIDAY_FILE,
+  CN_HOLIDAY_FILE_CACHE,
+  CN_HOLIDAY_JSON_URL,
+  CN_HOLIDAY_STATUS,
   FILTER_NOTES_BY_NOTEBOOK,
   SHOW_CALENDAR_BUTTON,
   SHOW_MODIFIED_NOTES,
   SHOW_RELATED_NOTES,
+  SHOW_CN_HOLIDAYS,
   WEEK_START_DAY,
   WeekStartDay,
 } from "@constants/Settings";
 import { getDateFormat } from "./handlers/GlobalSettings";
 import { FILTER_BY_NOTEBOOK_COMMAND } from "./commands";
+import {
+  buildHolidayJsonUrl,
+  CN_HOLIDAY_JSON_MIRROR_TEMPLATE,
+  CN_HOLIDAY_JSON_URL_TEMPLATE,
+  formatHolidayJsonUrls,
+  getCnHolidaySettings,
+  getHolidayJsonYears,
+} from "./holidaysSettings";
+import {
+  getInitialHolidayStatus,
+  importHolidayFile,
+  refreshHolidayStatus,
+} from "./holidayData";
 
 const SETTINGS_SECTION_ID = "joplinCalendarSection";
+const HOLIDAY_JSON_YEARS = getHolidayJsonYears();
+const LATEST_HOLIDAY_JSON_YEAR = Math.max(...HOLIDAY_JSON_YEARS);
+const LATEST_HOLIDAY_JSON_URL = buildHolidayJsonUrl(
+  CN_HOLIDAY_JSON_URL_TEMPLATE,
+  LATEST_HOLIDAY_JSON_YEAR
+);
 
 const settingObservers: Record<string, Array<(value: any) => void>> = {};
 
@@ -84,9 +108,66 @@ export async function registerSettings() {
       value: true,
       section: SETTINGS_SECTION_ID,
     },
+    [SHOW_CN_HOLIDAYS]: {
+      ...getCnHolidaySettings(),
+      public: true,
+      type: SettingItemType.Bool,
+      value: true,
+      section: SETTINGS_SECTION_ID,
+    },
+    [CN_HOLIDAY_FILE]: {
+      label: "Chinese Holiday Data File (desktop)",
+      description:
+        "Import a holiday-cn JSON file (one year object or an array of " +
+        "them). Imported data overrides the bundled data. Leave empty to " +
+        "remove the import. Not supported on mobile.",
+      public: true,
+      type: SettingItemType.String,
+      subType: SettingItemSubType.FilePath,
+      value: "",
+      section: SETTINGS_SECTION_ID,
+    },
+    [CN_HOLIDAY_JSON_URL]: {
+      label: `Chinese Holiday JSON URL (${LATEST_HOLIDAY_JSON_YEAR})`,
+      description:
+        "Copy this URL into a browser to check or download the JSON file, " +
+        "then select it in the file setting above. Reference only: editing " +
+        "this field does not change the loaded data. Other years: " +
+        `${formatHolidayJsonUrls(HOLIDAY_JSON_YEARS)}. ` +
+        `Mirror template: ${CN_HOLIDAY_JSON_MIRROR_TEMPLATE}`,
+      public: true,
+      type: SettingItemType.String,
+      value: LATEST_HOLIDAY_JSON_URL,
+      section: SETTINGS_SECTION_ID,
+    },
+    [CN_HOLIDAY_STATUS]: {
+      label: "Holiday Data Status",
+      description:
+        "Summary of the holiday data currently in use: coverage, source, " +
+        "last import and source URLs. Managed by the plugin; updated after " +
+        "a file import.",
+      public: true,
+      type: SettingItemType.String,
+      value: getInitialHolidayStatus(),
+      section: SETTINGS_SECTION_ID,
+    },
+    [CN_HOLIDAY_FILE_CACHE]: {
+      label: "Chinese Holiday File Cache",
+      public: false,
+      type: SettingItemType.String,
+      value: "",
+      section: SETTINGS_SECTION_ID,
+    },
   });
 
+  await refreshHolidayStatus();
+
   await joplin.settings.onChange(async ({ keys }) => {
+    if (keys.includes(CN_HOLIDAY_FILE)) {
+      const filePath = await joplin.settings.value(CN_HOLIDAY_FILE);
+      await importHolidayFile(String(filePath ?? ""));
+    }
+
     keys.forEach((key) => {
       settingObservers[key]?.forEach(async (callback) => {
         callback(await joplin.settings.value(key));
@@ -104,6 +185,8 @@ export async function registerPanelAlertOnSettingChange(panelHandle: string) {
   await onSettingChangeAlertPanel(panelHandle, FILTER_NOTES_BY_NOTEBOOK);
   await onSettingChangeAlertPanel(panelHandle, WEEK_START_DAY);
   await onSettingChangeAlertPanel(panelHandle, CALENDAR_ONLY_MODE);
+  await onSettingChangeAlertPanel(panelHandle, SHOW_CN_HOLIDAYS);
+  await onSettingChangeAlertPanel(panelHandle, CN_HOLIDAY_FILE);
 }
 
 const PANEL_SETTINGS_KEYS = [
@@ -113,6 +196,9 @@ const PANEL_SETTINGS_KEYS = [
   FILTER_NOTES_BY_NOTEBOOK,
   WEEK_START_DAY,
   CALENDAR_ONLY_MODE,
+  SHOW_CN_HOLIDAYS,
+  CN_HOLIDAY_FILE,
+  CN_HOLIDAY_FILE_CACHE,
 ];
 
 /**

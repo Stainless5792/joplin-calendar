@@ -11,6 +11,7 @@ export enum MsgType {
   SettingChanged,
   TriggerAllSettingsCallbacks,
   GetSettings,
+  GetHolidayData,
 }
 
 export default MsgType;

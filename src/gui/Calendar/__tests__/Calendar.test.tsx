@@ -206,4 +206,29 @@ describe("calendar", () => {
 
     expect(onDateSelectCb).toHaveBeenCalled();
   });
+
+  it("highlights Chinese holidays only when requested", () => {
+    const date = moment("2026-02-17");
+    const { rerender } = render(
+      <Calendar selectedDate={date} showDots={false} />
+    );
+
+    expect(screen.queryByTitle("2026-02-17 春节（放假）")).toBeNull();
+
+    rerender(<Calendar selectedDate={date} showDots={false} showHolidays />);
+
+    expect(screen.getByTitle("2026-02-17 春节（放假）")).toBeDefined();
+  });
+
+  it("marks make-up workdays", () => {
+    render(
+      <Calendar
+        selectedDate={moment("2026-02-14")}
+        showDots={false}
+        showHolidays
+      />
+    );
+
+    expect(screen.getByTitle("2026-02-14 春节（调休上班）")).toBeDefined();
+  });
 });
