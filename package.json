@@ -1,14 +1,17 @@
 {
   "name": "joplin-plugin-calendar",
-  "version": "1.4.0",
+  "version": "1.4.1-b20261103.t150413",
   "scripts": {
-    "dist": "export NODE_OPTIONS=--openssl-legacy-provider && webpack --joplin-plugin-config buildMain && webpack --joplin-plugin-config buildExtraScripts && webpack --joplin-plugin-config createArchive",
-    "prepare": "husky install && npm run dist",
+    "build": "node scripts/release.mjs",
+    "dist": "node scripts/release.mjs",
+    "dist:minor": "node scripts/release.mjs --minor",
+    "dist:major": "node scripts/release.mjs --major",
+    "build:raw": "node scripts/build.mjs",
+    "prepare": "husky install && npm run build:raw",
     "update": "npm install -g generator-joplin && yo joplin --update",
     "watch": "npx npm-watch",
     "holidays:update": "node scripts/update-cn-holidays.mjs",
-    "bump-version": "node scripts/bump-version.mjs",
-    "release": "node scripts/bump-version.mjs --build",
+    "release": "node scripts/release.mjs",
     "test": "jest",
     "preversion": "npm test",
     "preversion:manifest": "replace '\\d+\\.\\d+\\.\\d+' \"$npm_package_version\" ./src/manifest.json",
@@ -64,7 +67,7 @@
     "**/*": "prettier --write --ignore-unknown"
   },
   "watch": {
-    "dist": {
+    "build:raw": {
       "patterns": [
         "src"
       ],

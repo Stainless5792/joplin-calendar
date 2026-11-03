@@ -74,8 +74,10 @@ This plugin for [Joplin](https://joplinapp.org/) adds a simple calendar which al
 
 The plugin is built using Webpack, which creates the compiled code in `/dist`. A JPL archive will also be created at the root, which can be used to distribute the plugin or test locally by loading it into Joplin.
 
-To build the plugin, simply run `npm run dist`.
-Alternatively, to automatically rebuild the plugin on source code changes, run `npm run watch`
+To build the plugin, run `npm run dist`. Each run bumps the patch version,
+appends a build timestamp, and packages the result in `publish/`.
+Alternatively, to automatically rebuild the plugin on source code changes, run
+`npm run watch` (it uses `npm run build:raw`, which does not change the version).
 
 ## Testing the plugin
 
@@ -112,19 +114,24 @@ new `.jpl`:
 
 ## Releasing a new version
 
-`npm run dist` only builds; it never changes the version, so `npm run watch`
-cannot bump it on every rebuild. To bump and build in one step:
+Every packaging run bumps the version and appends the build time, so each
+`.jpl` is unique:
 
 ```bash
-npm run release           # patch: 1.3.0 -> 1.3.1
-npm run release -- minor  # minor: 1.3.0 -> 1.4.0
-npm run release -- major  # major: 1.3.0 -> 2.0.0
+npm run dist         # patch: 1.4.0 -> 1.4.1-b20261103.t150413
+npm run dist:minor   # minor: 1.4.0 -> 1.5.0-b20261103.t150413
+npm run dist:major   # major: 1.4.0 -> 2.0.0-b20261103.t150413
+npm run release -- --set=2.0.0
 ```
 
+The format is `<major>.<minor>.<patch>-b<YYYYMMDD>.t<HHmmss>` (local time).
 The bump updates `package.json`, `src/manifest.json` and `package-lock.json`
-before the build, so the generated `.jpl` carries the new version. Use
-`npm run bump-version -- --dry-run` to preview the next version without
-changing anything.
+before the build, so the generated `.jpl` carries the new version, and a copy
+is saved as `publish/<id>-v<version>.jpl`. If the build fails, the previous
+version is restored.
+
+Use `npm run release -- --dry-run` to preview the next version without
+changing anything, or `npm run build:raw` to package without bumping.
 
 ## Updating the plugin framework
 
