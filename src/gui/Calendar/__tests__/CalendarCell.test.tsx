@@ -44,7 +44,7 @@ describe("CalendarCell holidays", () => {
     );
   });
 
-  it("hides holiday markers on muted days", () => {
+  it("keeps holiday markers on muted days", () => {
     renderCell(
       <CalendarCell
         date={moment("2026-02-17")}
@@ -54,7 +54,23 @@ describe("CalendarCell holidays", () => {
       />
     );
 
-    expect(screen.getByRole("cell")).not.toHaveAttribute("title");
+    const cell = screen.getByRole("cell");
+    expect(cell).toHaveAttribute("title", "2026-02-17 春节（放假）");
+    expect(cell).toHaveStyle(
+      "background-image: linear-gradient(rgba(217, 48, 37, 0.14), rgba(217, 48, 37, 0.14))"
+    );
+  });
+
+  it("renders a month label when requested", () => {
+    renderCell(
+      <CalendarCell
+        date={moment("2026-02-17")}
+        showDots={false}
+        showMonthLabel
+      />
+    );
+
+    expect(screen.getByRole("cell")).toHaveTextContent(/Feb\s*17/);
   });
 
   it("tints holidays and make-up workdays differently", () => {

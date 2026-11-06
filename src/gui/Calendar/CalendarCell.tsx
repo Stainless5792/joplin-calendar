@@ -89,6 +89,14 @@ const StyledCell = styled.td<{
   }
 `;
 
+const MonthLabel = styled.span`
+  display: block;
+  font-size: 0.6em;
+  line-height: 1;
+  opacity: 0.7;
+  margin-bottom: 0.1rem;
+`;
+
 export interface CalendarCellProps {
   date: moment.Moment;
   muted?: boolean;
@@ -96,6 +104,7 @@ export interface CalendarCellProps {
   currentDay?: boolean;
   numberOfDots?: number;
   showDots?: boolean;
+  showMonthLabel?: boolean;
   holiday?: CnHolidayInfo;
   onSelect?: (date: moment.Moment) => void;
 }
@@ -107,6 +116,7 @@ function CalendarCell({
   currentDay,
   numberOfDots,
   showDots = true,
+  showMonthLabel = false,
   holiday,
   onSelect,
 }: CalendarCellProps) {
@@ -114,7 +124,7 @@ function CalendarCell({
     onSelect(date);
   }, [date, onSelect]);
 
-  const visibleHoliday = muted ? undefined : holiday;
+  const visibleHoliday = holiday;
   const offDay = visibleHoliday?.isOffDay === true;
   const workDay = visibleHoliday?.isOffDay === false;
 
@@ -133,7 +143,11 @@ function CalendarCell({
       offDay={offDay}
       workDay={workDay}
       title={title}
+      aria-label={date.format("YYYY-MM-DD")}
     >
+      {showMonthLabel && (
+        <MonthLabel aria-hidden="true">{date.format("MMM")}</MonthLabel>
+      )}
       {date.format("D")}
       {showDots && <DotBar numberOfDots={numberOfDots ?? 0} />}
     </StyledCell>

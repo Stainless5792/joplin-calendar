@@ -6,7 +6,7 @@ import moment from "moment";
 import { act } from "react-dom/test-utils";
 import useGetMonthStatistics from "../../hooks/useGetMonthStatistics";
 import useWebviewApiOnMessage from "../../hooks/useWebViewApiOnMessage";
-import { WeekStartDay } from "@constants/Settings";
+import { WeekStartDay, CalendarViewMode } from "@constants/Settings";
 import useOnSettingsChange from "../../hooks/useOnSettingsChange";
 
 jest.mock("../../hooks/useGetMonthStatistics");
@@ -230,5 +230,91 @@ describe("calendar", () => {
     );
 
     expect(screen.getByTitle("2026-02-14 春节（调休上班）")).toBeDefined();
+  });
+
+  it("shows holidays on adjacent-month dates", () => {
+    mockedUseOnSettingsChange.mockReturnValue(WeekStartDay.Sunday);
+    render(
+      <Calendar
+        selectedDate={moment("2026-04-01")}
+        showDots={false}
+        showHolidays
+      />
+    );
+
+    expect(screen.getByTitle("2026-05-01 劳动节（放假）")).toBeDefined();
+  });
+
+  it("renders a rolling look-ahead window", () => {
+    mockedUseOnSettingsChange.mockReturnValue(WeekStartDay.Monday);
+    const date = moment("2026-11-06");
+
+    render(
+      <Calendar
+        selectedDate={date}
+        anchorDate={date}
+        viewMode={CalendarViewMode.LookAhead}
+        showDots={false}
+        showHolidays
+      />
+    );
+
+    const cells = screen.getAllByRole("cell");
+    expect(cells).toHaveLength(42);
+    expect(cells[0]).toHaveTextContent(/Oct\s*26/);
+    expect(cells[6]).toHaveTextContent(/Nov\s*1/);
+    expect(cells[7]).toHaveTextContent("2");
+    expect(cells[36]).toHaveTextContent(/Dec\s*1/);
+    expect(cells[41]).toHaveTextContent("6");
+  });
+
+  it("keeps the normal header format in look-ahead mode", () => {
+    mockedUseOnSettingsChange.mockReturnValue(WeekStartDay.Monday);
+    const date = moment("2026-11-06");
+    const { rerender } = render(
+      <Calendar
+        selectedDate={date}
+        anchorDate={date}
+        viewMode={CalendarViewMode.LookAhead}
+        showDots={false}
+      />
+    );
+
+    expect(screen.getByText("Nov 2026")).toBeDefined();
+
+    rerender(
+      <Calendar
+        selectedDate={date}
+        anchorDate={date}
+        viewMode={CalendarViewMode.LookAhead}
+        showDots={false}
+        showWeekNumber
+      />
+    );
+
+    const weekBadge = screen.getByLabelText("week-number");
+    expect(weekBadge).toHaveTextContent("(W45)");
+    expect(weekBadge.parentElement).toHaveTextContent("2026/11/06(W45)");
+  });
+
+  it("shows future-month holidays and month labels in look-ahead mode", () => {
+    mockedUseOnSettingsChange.mockReturnValue(WeekStartDay.Monday);
+    const date = moment("2026-04-01");
+
+    render(
+      <Calendar
+        selectedDate={date}
+        anchorDate={date}
+        viewMode={CalendarViewMode.LookAhead}
+        showDots={false}
+        showHolidays
+      />
+    );
+
+    const cells = screen.getAllByRole("cell");
+    expect(cells[0]).toHaveTextContent(/Mar\s*23/);
+    expect(cells[9]).toHaveTextContent(/Apr\s*1/);
+    expect(cells[39]).toHaveTextContent(/May\s*1/);
+    expect(screen.getByTitle("2026-05-01 劳动节（放假）")).toBeDefined();
   });
 });

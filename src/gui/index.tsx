@@ -2,6 +2,8 @@ import React, {
   KeyboardEvent as ReactKeyboardEvent,
   useCallback,
   useEffect,
+  useMemo,
+  useRef,
   useState,
 } from "react";
 import { render } from "react-dom";
@@ -20,8 +22,19 @@ import useNoteSearchTypes from "./hooks/useNoteSearchTypes";
 import useCalendarOnlyMode from "./hooks/useCalendarOnlyMode";
 import useOnSettingsChange from "./hooks/useOnSettingsChange";
 import useHolidayData from "./hooks/useHolidayData";
-import { SHOW_CN_HOLIDAYS } from "@constants/Settings";
+import {
+  CALENDAR_VIEW_MODE,
+  CalendarViewMode,
+  SHOW_CN_HOLIDAYS,
+  WEEK_START_DAY,
+  WeekStartDay,
+} from "@constants/Settings";
 import NoteSearchTypes from "@constants/NoteSearchTypes";
+import {
+  getMonthWindow,
+  getRollingWindow,
+  getWindowMonths,
+} from "./utils/calendarWindow";
 
 const queryClient = new QueryClient();
 
@@ -64,43 +77,95 @@ async function getNearestPastDayWithNote(
 function App() {
   const [selectedDate, setSelectedDateBase] = useState(moment());
   const [shownMonth, setShownMonth] = useState(moment());
-
-  const previousMonth = shownMonth.clone().subtract(1, "month");
-  const nextMonth = shownMonth.clone().add(1, "month");
+  const [anchorDate, setAnchorDate] = useState(moment());
 
   const noteSearchTypes = useNoteSearchTypes();
   const calendarOnly = useCalendarOnlyMode();
   const showCnHolidays = useOnSettingsChange<boolean>(SHOW_CN_HOLIDAYS, true);
+  const viewMode = useOnSettingsChange<CalendarViewMode>(
+    CALENDAR_VIEW_MODE,
+    CalendarViewMode.Month
+  );
+  const weekStartDay = useOnSettingsChange<WeekStartDay>(
+    WEEK_START_DAY,
+    WeekStartDay.Sunday
+  );
   const holidayData = useHolidayData();
   const dataEnabled = !calendarOnly;
 
-  const { data: previousMonthStats, refetch: refetchPreviousMonthStats } =
-    useGetMonthStatistics(previousMonth.clone(), noteSearchTypes, {
-      enabled: dataEnabled,
-    });
-  const { data: shownMonthStats, refetch: refetchShownMonthStats } =
-    useGetMonthStatistics(shownMonth.clone(), noteSearchTypes, {
-      enabled: dataEnabled,
-    });
-  const { data: nextMonthStats, refetch: refetchNextMonthStats } =
-    useGetMonthStatistics(nextMonth.clone(), noteSearchTypes, {
-      enabled: dataEnabled,
-    });
+  const calendarWindow = useMemo(
+    () =>
+      viewMode === CalendarViewMode.LookAhead
+        ? getRollingWindow(anchorDate, weekStartDay)
+        : getMonthWindow(shownMonth, weekStartDay),
+    [viewMode, anchorDate, shownMonth, weekStartDay]
+  );
+
+  const statsMonths = useMemo(() => {
+    const months = getWindowMonths(calendarWindow);
+    while (months.length < 3) {
+      months.push(months[months.length - 1].clone().add(1, "month"));
+    }
+    return months.slice(0, 3);
+  }, [calendarWindow]);
+
+  const { data: statsMonth0 } = useGetMonthStatistics(
+    statsMonths[0],
+    noteSearchTypes,
+    { enabled: dataEnabled }
+  );
+  const { data: statsMonth1 } = useGetMonthStatistics(
+    statsMonths[1],
+    noteSearchTypes,
+    { enabled: dataEnabled }
+  );
+  const { data: statsMonth2 } = useGetMonthStatistics(
+    statsMonths[2],
+    noteSearchTypes,
+    { enabled: dataEnabled }
+  );
 
   let statistics: Record<string, number> = {};
 
-  if (dataEnabled && previousMonthStats && shownMonthStats && nextMonthStats) {
+  if (dataEnabled) {
     statistics = {
-      ...previousMonthStats.notesPerDay,
-      ...shownMonthStats.notesPerDay,
-      ...nextMonthStats.notesPerDay,
+      ...(statsMonth0?.notesPerDay ?? {}),
+      ...(statsMonth1?.notesPerDay ?? {}),
+      ...(statsMonth2?.notesPerDay ?? {}),
     };
   }
 
   const setSelectedDate = (date: moment.Moment) => {
     setSelectedDateBase(date);
     setShownMonth(date);
+
+    if (
+      viewMode === CalendarViewMode.LookAhead &&
+      (date.isBefore(calendarWindow.start, "day") ||
+        date.isAfter(calendarWindow.end, "day"))
+    ) {
+      setAnchorDate(date);
+    }
   };
+
+  const goToToday = () => {
+    const today = moment();
+    setSelectedDateBase(today);
+    setShownMonth(today);
+    setAnchorDate(today);
+  };
+
+  const selectedDateRef = useRef(selectedDate);
+  useEffect(() => {
+    selectedDateRef.current = selectedDate;
+  }, [selectedDate]);
+
+  // Keep the anchor aligned with the selected date when switching views.
+  useEffect(() => {
+    const date = selectedDateRef.current;
+    setAnchorDate(date.clone());
+    setShownMonth(date.clone());
+  }, [viewMode]);
 
   /**
    * In calendar-only mode keep the selected date in the month being viewed,
@@ -114,15 +179,22 @@ function App() {
     }
   };
 
+  const moveLookAhead = (weeks: number) => {
+    const next = selectedDate.clone().add(weeks, "weeks");
+    setSelectedDateBase(next);
+    setShownMonth(next);
+    setAnchorDate(next);
+  };
+
   useEffect(() => {
-    if (!calendarOnly) {
+    if (!calendarOnly || viewMode === CalendarViewMode.LookAhead) {
       return;
     }
     if (!selectedDate.isSame(shownMonth, "month")) {
       const day = Math.min(selectedDate.date(), shownMonth.daysInMonth());
       setSelectedDateBase(shownMonth.clone().date(day));
     }
-  }, [calendarOnly, selectedDate, shownMonth]);
+  }, [calendarOnly, viewMode, selectedDate, shownMonth]);
 
   const onCalendarKeyBoardNavigation = useCallback(
     async (event: ReactKeyboardEvent) => {
@@ -167,24 +239,42 @@ function App() {
       <Calendar
         selectedDate={selectedDate}
         shownMonth={shownMonth}
+        anchorDate={anchorDate}
+        viewMode={viewMode}
         statistics={dataEnabled ? statistics : undefined}
         showDots={dataEnabled}
         showWeekNumber={calendarOnly}
         showToday={calendarOnly}
         showHolidays={calendarOnly && showCnHolidays}
         holidayLookup={holidayData.lookup}
-        onTodayClick={() => setSelectedDate(moment())}
+        onTodayClick={goToToday}
         onDateSelect={(date) => setSelectedDate(date)}
         onNextMonthClick={() => {
+          if (viewMode === CalendarViewMode.LookAhead) {
+            moveLookAhead(1);
+            return;
+          }
           moveShownMonth(shownMonth.clone().add(1, "month"));
         }}
         onNextYearClick={() => {
+          if (viewMode === CalendarViewMode.LookAhead) {
+            moveLookAhead(4);
+            return;
+          }
           moveShownMonth(shownMonth.clone().add(1, "year"));
         }}
         onPreviousMonthClick={() => {
+          if (viewMode === CalendarViewMode.LookAhead) {
+            moveLookAhead(-1);
+            return;
+          }
           moveShownMonth(shownMonth.clone().subtract(1, "month"));
         }}
         onPreviousYearClick={() => {
+          if (viewMode === CalendarViewMode.LookAhead) {
+            moveLookAhead(-4);
+            return;
+          }
           moveShownMonth(shownMonth.clone().subtract(1, "year"));
         }}
         onKeyboardNavigation={onCalendarKeyBoardNavigation}
@@ -222,9 +312,7 @@ function App() {
               }
               setSelectedDate(date);
             }}
-            onTodayClick={() => {
-              setSelectedDate(moment());
-            }}
+            onTodayClick={goToToday}
           />
         </>
       )}

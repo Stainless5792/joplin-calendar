@@ -17,8 +17,13 @@ import MsgType from "@constants/messageTypes";
 import { PluginPostMessage } from "@constants/pluginMessageTypes";
 import useWebviewApiOnMessage from "../hooks/useWebViewApiOnMessage";
 import useOnSettingsChange from "../hooks/useOnSettingsChange";
-import { WEEK_START_DAY, WeekStartDay } from "@constants/Settings";
+import {
+  CalendarViewMode,
+  WEEK_START_DAY,
+  WeekStartDay,
+} from "@constants/Settings";
 import { getWeekNumberOfRow } from "../utils/weekNumber";
+import { getMonthWindow, getRollingWindow } from "../utils/calendarWindow";
 import { getCnHoliday, type CnHolidayLookup } from "../holidays";
 
 const DAYS_IN_A_WEEK = 7;
@@ -38,6 +43,8 @@ function calculateNumberOfDots(numberOfNotes) {
 interface CalendarProps {
   selectedDate: moment.Moment;
   shownMonth?: moment.Moment;
+  anchorDate?: moment.Moment;
+  viewMode?: CalendarViewMode;
   currentDay?: moment.Moment;
   // Statistics map with `MM/DD/YYYY` as key and arbitrary number as value.
   statistics?: Record<string, number>;
@@ -66,6 +73,8 @@ interface CalendarProps {
 function Calendar({
   selectedDate,
   shownMonth: shownMonthProp,
+  anchorDate: anchorDateProp,
+  viewMode = CalendarViewMode.Month,
   currentDay: currentDayProp,
   statistics,
   showDots = true,
@@ -110,32 +119,18 @@ function Calendar({
     [selectedDate, weekStartDay]
   );
 
-  const currentMonthFirstDay = shownMonth.startOf("month");
+  const anchorDate = anchorDateProp ?? selectedDate;
+  const calendarWindow = useMemo(
+    () =>
+      viewMode === CalendarViewMode.LookAhead
+        ? getRollingWindow(anchorDate, weekStartDay)
+        : getMonthWindow(shownMonth, weekStartDay),
+    [viewMode, anchorDateProp, selectedDate, shownMonth, weekStartDay]
+  );
 
   const calendarBody: React.JSX.Element[] = [];
-  let firstRowBacktrackOffset;
-  if (weekStartDay === WeekStartDay.Monday) {
-    // If the current month starts on a day other than Monday, we need to backtrack.
-    // Monday has isoWeek 1, and we need to  backtrack 0 days.
-    // Tuesday has isoWeek 2, and we need to backtrack 1 days.
-    // ...
-    // Sunday has isoWeek 7, and we need to backtrack 6 days.
-    firstRowBacktrackOffset = currentMonthFirstDay.isoWeekday() - 1;
-  } else {
-    // Fallback to asssuming week starts on Sunday.
-    // If current month starts on a day other than Sunday, we need to backtrack.
-    // Monday has isoWeek 1, and we need to  backtrack 1 day.
-    // Tuesday has isoWeek 2, and we need to backtrack 2 days.
-    // ...
-    // Sunday has isoWeek 7, and we need to backtrack no days.
-    firstRowBacktrackOffset = currentMonthFirstDay.isoWeekday() % 7;
-  }
-
   // Note: Moment JS uses in place operations
-  const workingDate = currentMonthFirstDay.clone();
-
-  // Offset to fill in dates from previous month till first of current month.
-  workingDate.subtract(firstRowBacktrackOffset, "days");
+  const workingDate = calendarWindow.start.clone();
 
   for (let row = 0; row < CALENDAR_ROWS; row++) {
     const cols: React.JSX.Element[] = [];
@@ -151,20 +146,22 @@ function Calendar({
 
       numberOfDots = showDots ? Math.min(numberOfDots, 4) : 0;
 
+      const isLookAhead = viewMode === CalendarViewMode.LookAhead;
+      const isFirstCell = row === 0 && col === 0;
+
       cols.push(
         <CalendarCell
           date={workingDate.clone()}
-          muted={!inCurrentMonth}
+          muted={isLookAhead ? row === 0 : !inCurrentMonth}
           selected={selectedDate.isSame(workingDate, "date")}
           currentDay={currentDay.isSame(workingDate, "date")}
           onSelect={onDateCellSelected}
           numberOfDots={numberOfDots}
           showDots={showDots}
-          holiday={
-            showHolidays && inCurrentMonth
-              ? holidayLookup(workingDate)
-              : undefined
+          showMonthLabel={
+            isLookAhead && (isFirstCell || workingDate.date() === 1)
           }
+          holiday={showHolidays ? holidayLookup(workingDate) : undefined}
         />
       );
       workingDate.add(1, "day");

@@ -18,6 +18,8 @@ const CalendarDate = styled(PlainText)`
   flex-basis: 50%;
   font-size: calc(var(--joplin-font-size) * 1.1);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const WeekBadge = styled.span`

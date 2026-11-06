@@ -14,17 +14,26 @@ This plugin for [Joplin](https://joplinapp.org/) adds a simple calendar which al
 - **Chinese public holidays** (2025–2026) are highlighted in Calendar Only Mode:
   statutory holidays are tinted red with a filled corner dot, make-up workdays
   (调休) are tinted blue with a hollow corner marker. Hover a day to see the
-  holiday name. Toggle this with the "Show Chinese Public Holidays" setting;
-  coverage, source URLs and the last import are shown under "Holiday Data
-  Status", and data can be updated by importing a JSON file without
-  repackaging. The "Manage Holiday Data" command shows a per-year overview and
-  lets you re-import or clear the imported data.
+  holiday name. Holidays are also marked on adjacent-month dates shown in the
+  grid, not only in the current month. Toggle this with the "Show Chinese
+  Public Holidays" setting; coverage, source URLs and the last import are shown
+  under "Holiday Data Status", and data can be updated by importing a JSON file
+  without repackaging. The "Manage Holiday Data" command shows a per-year
+  overview and lets you re-import or clear the imported data.
+- **Look-ahead calendar view** is available from the "Calendar View" setting.
+  It shows the previous week, the current week and the next four weeks, so the
+  last days of a month still show several future weeks. Holidays and make-up
+  workdays in future months are marked, and month labels appear on the first
+  day of each month.
 
 ## 📆 Calendar
 
 - Clicking on a calendar date shows the notes created or updated on that date.
-- Clicking on the '<' and '>' buttons above the calendar moves between months.
-- Clicking on the '<' and '>' buttons above the calendar _while holding `ctrl`_ moves between years.
+- Clicking on the '<' and '>' buttons above the calendar moves between months
+  in month view, and between weeks in look-ahead view.
+- Clicking on the '<' and '>' buttons above the calendar _while holding `ctrl`_
+  moves between years in month view, and between four-week blocks in look-ahead
+  view.
 - Calendar dates have dots beneath them indicating the number of notes written on that day.
   - Each dot represents 2 notes created, up to a maximum of 4 dots.
 

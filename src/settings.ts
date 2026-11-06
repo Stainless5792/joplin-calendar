@@ -3,6 +3,8 @@ import { SettingItemSubType, SettingItemType } from "api/types";
 import MsgType from "@constants/messageTypes";
 import {
   CALENDAR_ONLY_MODE,
+  CALENDAR_VIEW_MODE,
+  CalendarViewMode,
   CN_HOLIDAY_FILE,
   CN_HOLIDAY_FILE_CACHE,
   CN_HOLIDAY_JSON_URL,
@@ -106,6 +108,22 @@ export async function registerSettings() {
       value: true,
       section: SETTINGS_SECTION_ID,
     },
+    [CALENDAR_VIEW_MODE]: {
+      label: "Calendar View",
+      description:
+        "Month grid, or a rolling 6-week look-ahead window: the previous " +
+        "week, the current week and the next four weeks. The look-ahead " +
+        "window shows holidays and make-up workdays in future months.",
+      public: true,
+      isEnum: true,
+      type: SettingItemType.String,
+      options: {
+        [CalendarViewMode.Month]: "Month grid",
+        [CalendarViewMode.LookAhead]: "Look-ahead (6 weeks)",
+      },
+      value: CalendarViewMode.Month,
+      section: SETTINGS_SECTION_ID,
+    },
     [SHOW_CN_HOLIDAYS]: {
       ...getCnHolidaySettings(),
       public: true,
@@ -191,6 +209,7 @@ export async function registerPanelAlertOnSettingChange(panelHandle: string) {
   await onSettingChangeAlertPanel(panelHandle, FILTER_NOTES_BY_NOTEBOOK);
   await onSettingChangeAlertPanel(panelHandle, WEEK_START_DAY);
   await onSettingChangeAlertPanel(panelHandle, CALENDAR_ONLY_MODE);
+  await onSettingChangeAlertPanel(panelHandle, CALENDAR_VIEW_MODE);
   await onSettingChangeAlertPanel(panelHandle, SHOW_CN_HOLIDAYS);
   await onSettingChangeAlertPanel(panelHandle, CN_HOLIDAY_FILE);
 }
@@ -202,6 +221,7 @@ const PANEL_SETTINGS_KEYS = [
   FILTER_NOTES_BY_NOTEBOOK,
   WEEK_START_DAY,
   CALENDAR_ONLY_MODE,
+  CALENDAR_VIEW_MODE,
   SHOW_CN_HOLIDAYS,
   CN_HOLIDAY_FILE,
   CN_HOLIDAY_FILE_CACHE,
