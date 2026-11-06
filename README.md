@@ -17,7 +17,8 @@ This plugin for [Joplin](https://joplinapp.org/) adds a simple calendar which al
   holiday name. Toggle this with the "Show Chinese Public Holidays" setting;
   coverage, source URLs and the last import are shown under "Holiday Data
   Status", and data can be updated by importing a JSON file without
-  repackaging.
+  repackaging. The "Manage Holiday Data" command shows a per-year overview and
+  lets you re-import or clear the imported data.
 
 ## 📆 Calendar
 
@@ -101,7 +102,17 @@ The plugin can import holiday data at runtime, so new years do not require a
 new `.jpl`:
 
 - **Chinese Holiday Data File** imports a holiday-cn JSON file on desktop. It
-  can contain one year object or an array of them.
+  can contain one year object or an array of them. A result dialog reports the
+  imported coverage and details, or explains why the file was rejected. A
+  failed import keeps the previous data active. The last import result is also
+  kept in **Holiday Data Status**, so failures remain visible after a restart.
+- **Manage Holiday Data** (command palette or the Calendar menu) shows the
+  currently available years, whether each year comes from bundled or imported
+  data, and lets you re-import the current file, clear imported data, or copy
+  the source URLs.
+- **Re-import Holiday Data** re-reads the selected file even when its path has
+  not changed, which matters because Joplin does not emit a change event for
+  the same path.
 - **Chinese Holiday JSON URL** shows the direct URL for the next useful year
   (for example 2027); the description lists the other years and the jsDelivr
   mirror. Copy it into a browser to check whether the JSON file is available,

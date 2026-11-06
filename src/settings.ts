@@ -6,6 +6,7 @@ import {
   CN_HOLIDAY_FILE,
   CN_HOLIDAY_FILE_CACHE,
   CN_HOLIDAY_JSON_URL,
+  CN_HOLIDAY_LAST_IMPORT,
   CN_HOLIDAY_STATUS,
   FILTER_NOTES_BY_NOTEBOOK,
   SHOW_CALENDAR_BUTTON,
@@ -25,11 +26,8 @@ import {
   getCnHolidaySettings,
   getHolidayJsonYears,
 } from "./holidaysSettings";
-import {
-  getInitialHolidayStatus,
-  importHolidayFile,
-  refreshHolidayStatus,
-} from "./holidayData";
+import { getInitialHolidayStatus, refreshHolidayStatus } from "./holidayData";
+import { runHolidayImportFromSettings } from "./holidayDataActions";
 
 const SETTINGS_SECTION_ID = "joplinCalendarSection";
 const HOLIDAY_JSON_YEARS = getHolidayJsonYears();
@@ -119,8 +117,10 @@ export async function registerSettings() {
       label: "Chinese Holiday Data File (desktop)",
       description:
         "Import a holiday-cn JSON file (one year object or an array of " +
-        "them). Imported data overrides the bundled data. Leave empty to " +
-        "remove the import. Not supported on mobile.",
+        "them). A dialog reports the result. Imported entries take " +
+        "precedence over bundled entries on the same date. Leave empty to " +
+        'remove the import. Use the "Manage Holiday Data" command for a ' +
+        "per-year overview. Not supported on mobile.",
       public: true,
       type: SettingItemType.String,
       subType: SettingItemSubType.FilePath,
@@ -143,9 +143,9 @@ export async function registerSettings() {
     [CN_HOLIDAY_STATUS]: {
       label: "Holiday Data Status",
       description:
-        "Summary of the holiday data currently in use: coverage, source, " +
-        "last import and source URLs. Managed by the plugin; updated after " +
-        "a file import.",
+        "Summary of the holiday data currently in use: available years, " +
+        "bundled and imported years, last import and source URLs. Managed " +
+        "by the plugin; updated after a file import.",
       public: true,
       type: SettingItemType.String,
       value: getInitialHolidayStatus(),
@@ -158,14 +158,20 @@ export async function registerSettings() {
       value: "",
       section: SETTINGS_SECTION_ID,
     },
+    [CN_HOLIDAY_LAST_IMPORT]: {
+      label: "Chinese Holiday Last Import",
+      public: false,
+      type: SettingItemType.String,
+      value: "",
+      section: SETTINGS_SECTION_ID,
+    },
   });
 
   await refreshHolidayStatus();
 
   await joplin.settings.onChange(async ({ keys }) => {
     if (keys.includes(CN_HOLIDAY_FILE)) {
-      const filePath = await joplin.settings.value(CN_HOLIDAY_FILE);
-      await importHolidayFile(String(filePath ?? ""));
+      await runHolidayImportFromSettings();
     }
 
     keys.forEach((key) => {

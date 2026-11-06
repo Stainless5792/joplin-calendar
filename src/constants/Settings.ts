@@ -9,6 +9,7 @@ export const CN_HOLIDAY_FILE = "cnHolidayFile";
 export const CN_HOLIDAY_JSON_URL = "cnHolidayJsonUrl";
 export const CN_HOLIDAY_STATUS = "cnHolidayStatus";
 export const CN_HOLIDAY_FILE_CACHE = "cnHolidayFileCache";
+export const CN_HOLIDAY_LAST_IMPORT = "cnHolidayLastImport";
 
 export enum WeekStartDay {
   Sunday = "Sunday",

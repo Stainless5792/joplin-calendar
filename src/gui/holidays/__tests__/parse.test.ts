@@ -77,11 +77,41 @@ describe("parseHolidayYear", () => {
       })
     ).toThrow("Conflicting holiday entries");
   });
+
+  it("rejects dates that do not exist on the calendar", () => {
+    expect(() =>
+      parseHolidayYear({
+        ...springFestival,
+        days: [{ name: "春节", date: "2026-02-30", isOffDay: true }],
+      })
+    ).toThrow("invalid date");
+  });
+
+  it("attaches a stable error code and field context", () => {
+    try {
+      parseHolidayYear({
+        ...springFestival,
+        days: [{ name: "春节", date: "2026-2-17", isOffDay: true }],
+      });
+      throw new Error("Expected parseHolidayYear to throw");
+    } catch (error) {
+      expect(error).toMatchObject({
+        code: "day.dateInvalid",
+        context: { year: 2026, entryIndex: 0, field: "date" },
+      });
+    }
+  });
 });
 
 describe("parseHolidayFile", () => {
   it("accepts a single year object", () => {
     expect(parseHolidayFile(JSON.stringify(springFestival))).toHaveLength(1);
+  });
+
+  it("accepts a UTF-8 BOM", () => {
+    expect(
+      parseHolidayFile(`\uFEFF${JSON.stringify(springFestival)}`)
+    ).toHaveLength(1);
   });
 
   it("accepts an array of years", () => {
@@ -99,8 +129,24 @@ describe("parseHolidayFile", () => {
     expect(parsed.map((year) => year.year)).toEqual([2026, 2027]);
   });
 
+  it("rejects the same year declared more than once", () => {
+    expect(() =>
+      parseHolidayFile(JSON.stringify([springFestival, springFestival]))
+    ).toThrow("duplicate year");
+  });
+
   it("rejects invalid JSON", () => {
     expect(() => parseHolidayFile("{not json")).toThrow("not valid JSON");
+  });
+
+  it("reports the JSON syntax error position", () => {
+    try {
+      parseHolidayFile('{\n  "year": 2026,\n  "days": [\n  ]\n}extra');
+      throw new Error("Expected parseHolidayFile to throw");
+    } catch (error) {
+      expect(error).toMatchObject({ code: "json.invalid" });
+      expect((error as { context?: { line?: number } }).context?.line).toBe(5);
+    }
   });
 });
 

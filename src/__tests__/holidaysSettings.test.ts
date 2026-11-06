@@ -19,35 +19,77 @@ describe("getCnHolidaySettings", () => {
 });
 
 describe("formatHolidayStatus", () => {
-  it("shows coverage, origin, update date and source URLs", () => {
+  it("lists available, bundled and imported years", () => {
     expect(
       formatHolidayStatus({
-        years: [2025, 2027],
+        years: [2025, 2026, 2027],
+        bundledYears: [2025, 2026],
+        importedYears: [2027],
         sources: ["https://example.com/2027"],
         origin: "file",
         updatedAt: "2026-11-06T10:00:00.000Z",
+        lastImport: {
+          at: "2026-11-06T10:00:00",
+          ok: true,
+          filePath: "/tmp/2027.json",
+          fileName: "2027.json",
+        },
       })
     ).toBe(
-      "Coverage: 2025–2027 · Source: imported file · Updated: 2026-11-06 · " +
+      "Available years: 2025, 2026, 2027 · Bundled: 2025, 2026 · " +
+        "Imported: 2027 · Import succeeded at 2026-11-06 10:00 · " +
+        "Source: bundled + imported file · Updated: 2026-11-06 · " +
         "URLs: https://example.com/2027"
     );
   });
 
-  it("labels imported files", () => {
-    expect(
-      formatHolidayStatus({
-        years: [2027],
-        sources: [],
-        origin: "file",
-        updatedAt: "2026-11-06T10:00:00.000Z",
-      })
-    ).toContain("Source: imported file");
+  it("keeps the failure reason after a restart", () => {
+    const status = formatHolidayStatus({
+      years: [2025, 2026],
+      bundledYears: [2025, 2026],
+      importedYears: [],
+      sources: [],
+      origin: "bundled",
+      lastImport: {
+        at: "2026-11-06T10:00:00",
+        ok: false,
+        filePath: "/tmp/broken.json",
+        fileName: "broken.json",
+        message: "The file is not valid JSON.",
+      },
+    });
+
+    expect(status).toContain(
+      "Import failed at 2026-11-06 10:00: The file is not valid JSON."
+    );
+    expect(status).toContain("Bundled data still in use");
+  });
+
+  it("says previous imported data is still active when a new import fails", () => {
+    const status = formatHolidayStatus({
+      years: [2025, 2026, 2027],
+      bundledYears: [2025, 2026],
+      importedYears: [2027],
+      sources: [],
+      origin: "file",
+      lastImport: {
+        at: "2026-11-06T10:00:00",
+        ok: false,
+        filePath: "/tmp/broken.json",
+        fileName: "broken.json",
+        message: "The file is not valid JSON.",
+      },
+    });
+
+    expect(status).toContain("Previous data still in use");
   });
 
   it("describes the bundled data", () => {
     const status = getBundledHolidayStatus();
 
-    expect(status).toContain("Coverage: 2025–2026");
+    expect(status).toContain("Available years: 2025, 2026");
+    expect(status).toContain("Bundled: 2025, 2026");
+    expect(status).toContain("Imported: none");
     expect(status).toContain("Source: bundled data");
     for (const source of CN_HOLIDAY_SOURCES) {
       expect(status).toContain(source);

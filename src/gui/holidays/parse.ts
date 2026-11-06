@@ -7,12 +7,75 @@ import type {
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_DAYS_PER_YEAR = 400;
+const MAX_YEARS = 50;
 const MAX_NAME_LENGTH = 20;
 
-function asDateString(value: unknown, context: string): string {
+export type HolidayParseErrorCode =
+  | "json.invalid"
+  | "json.rootInvalid"
+  | "years.empty"
+  | "years.tooMany"
+  | "year.duplicate"
+  | "year.invalid"
+  | "year.noDays"
+  | "year.tooManyDays"
+  | "day.invalid"
+  | "day.dateInvalid"
+  | "day.dateInvalidCalendar"
+  | "day.nameInvalid"
+  | "day.isOffDayInvalid"
+  | "day.yearMismatch"
+  | "day.conflict";
+
+export interface HolidayParseErrorContext {
+  year?: number;
+  date?: string;
+  entryIndex?: number;
+  field?: string;
+  line?: number;
+  column?: number;
+}
+
+export class HolidayParseError extends Error {
+  constructor(
+    public readonly code: HolidayParseErrorCode,
+    message: string,
+    public readonly context: HolidayParseErrorContext = {}
+  ) {
+    super(message);
+    this.name = "HolidayParseError";
+  }
+}
+
+function isValidCalendarDate(date: string): boolean {
+  const [year, month, day] = date.split("-").map(Number);
+  if (month < 1 || month > 12 || day < 1) {
+    return false;
+  }
+
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return day <= daysInMonth;
+}
+
+function asDateString(
+  value: unknown,
+  year: number,
+  entryIndex: number
+): string {
   const date = String(value ?? "");
   if (!DATE_PATTERN.test(date)) {
-    throw new Error(`${context}: invalid date "${date}"`);
+    throw new HolidayParseError(
+      "day.dateInvalid",
+      `Year ${year}, entry ${entryIndex + 1}: invalid date "${date}"`,
+      { year, entryIndex, field: "date" }
+    );
+  }
+  if (!isValidCalendarDate(date)) {
+    throw new HolidayParseError(
+      "day.dateInvalidCalendar",
+      `Year ${year}, entry ${entryIndex + 1}: invalid date "${date}"`,
+      { year, entryIndex, field: "date" }
+    );
   }
   return date;
 }
@@ -23,22 +86,37 @@ function asDateString(value: unknown, context: string): string {
  */
 export function parseHolidayYear(value: unknown): CnHolidayYear {
   if (!value || typeof value !== "object") {
-    throw new Error("Holiday data must be an object");
+    throw new HolidayParseError(
+      "json.rootInvalid",
+      "Holiday data must be an object"
+    );
   }
 
   const raw = value as Record<string, unknown>;
   const year = Number(raw.year);
 
   if (!Number.isInteger(year) || year < 2000 || year > 2100) {
-    throw new Error(`Invalid holiday data year: ${String(raw.year)}`);
+    throw new HolidayParseError(
+      "year.invalid",
+      `Invalid holiday data year: ${String(raw.year)}`,
+      { field: "year" }
+    );
   }
 
   if (!Array.isArray(raw.days) || raw.days.length === 0) {
-    throw new Error(`No holiday days found for ${year}`);
+    throw new HolidayParseError(
+      "year.noDays",
+      `No holiday days found for ${year}`,
+      { year }
+    );
   }
 
   if (raw.days.length > MAX_DAYS_PER_YEAR) {
-    throw new Error(`Too many holiday days for ${year}`);
+    throw new HolidayParseError(
+      "year.tooManyDays",
+      `Too many holiday days for ${year}`,
+      { year }
+    );
   }
 
   const papers = Array.isArray(raw.papers)
@@ -47,27 +125,43 @@ export function parseHolidayYear(value: unknown): CnHolidayYear {
 
   const daysByDate = new Map<string, CnHolidayDay>();
 
-  for (const entry of raw.days) {
+  raw.days.forEach((entry, entryIndex) => {
     if (!entry || typeof entry !== "object") {
-      throw new Error(`Invalid holiday entry for ${year}`);
+      throw new HolidayParseError(
+        "day.invalid",
+        `Invalid holiday entry for ${year}`,
+        { year, entryIndex }
+      );
     }
 
     const day = entry as Record<string, unknown>;
-    const date = asDateString(day.date, `${year}`);
+    const date = asDateString(day.date, year, entryIndex);
     const name = String(day.name ?? "").trim();
 
     if (!name || name.length > MAX_NAME_LENGTH) {
-      throw new Error(`Invalid holiday name for ${date}`);
+      throw new HolidayParseError(
+        "day.nameInvalid",
+        `Invalid holiday name for ${date}`,
+        { year, date, entryIndex, field: "name" }
+      );
     }
     if (typeof day.isOffDay !== "boolean") {
-      throw new Error(`Invalid isOffDay for ${date}`);
+      throw new HolidayParseError(
+        "day.isOffDayInvalid",
+        `Invalid isOffDay for ${date}`,
+        { year, date, entryIndex, field: "isOffDay" }
+      );
     }
 
     const dateYear = Number(date.slice(0, 4));
     const isCrossYearDate =
       dateYear === year - 1 && date.startsWith(`${year - 1}-12`);
     if (dateYear !== year && !isCrossYearDate) {
-      throw new Error(`${date} does not belong to ${year}`);
+      throw new HolidayParseError(
+        "day.yearMismatch",
+        `${date} does not belong to ${year}`,
+        { year, date, entryIndex, field: "date" }
+      );
     }
 
     const existing = daysByDate.get(date);
@@ -75,11 +169,15 @@ export function parseHolidayYear(value: unknown): CnHolidayYear {
       existing &&
       (existing.name !== name || existing.isOffDay !== day.isOffDay)
     ) {
-      throw new Error(`Conflicting holiday entries for ${date}`);
+      throw new HolidayParseError(
+        "day.conflict",
+        `Conflicting holiday entries for ${date}`,
+        { year, date, entryIndex }
+      );
     }
 
     daysByDate.set(date, { name, date, isOffDay: day.isOffDay });
-  }
+  });
 
   return {
     year,
@@ -88,23 +186,84 @@ export function parseHolidayYear(value: unknown): CnHolidayYear {
   };
 }
 
+interface JsonErrorPosition {
+  line?: number;
+  column?: number;
+}
+
+function getJsonErrorPosition(text: string, error: unknown): JsonErrorPosition {
+  const message = error instanceof Error ? error.message : String(error);
+  const lineColumnMatch = /line (\d+) column (\d+)/i.exec(message);
+  if (lineColumnMatch) {
+    return {
+      line: Number(lineColumnMatch[1]),
+      column: Number(lineColumnMatch[2]),
+    };
+  }
+
+  const positionMatch = /position (\d+)/i.exec(message);
+  if (!positionMatch) {
+    return {};
+  }
+
+  const position = Number(positionMatch[1]);
+  const before = text.slice(0, position);
+  const lastLineBreak = Math.max(
+    before.lastIndexOf("\n"),
+    before.lastIndexOf("\r")
+  );
+
+  return {
+    line: before.split(/\r\n|\r|\n/).length,
+    column: position - lastLineBreak,
+  };
+}
+
 /**
  * Parse a local file: either one year object or an array of year objects.
  */
 export function parseHolidayFile(text: string): CnHolidayYear[] {
+  const normalizedText = text.replace(/^\uFEFF/, "");
   let json: unknown;
   try {
-    json = JSON.parse(text);
+    json = JSON.parse(normalizedText);
   } catch (error) {
-    throw new Error("Holiday file is not valid JSON");
+    throw new HolidayParseError(
+      "json.invalid",
+      "Holiday file is not valid JSON",
+      getJsonErrorPosition(normalizedText, error)
+    );
   }
 
   const entries = Array.isArray(json) ? json : [json];
   if (!entries.length) {
-    throw new Error("Holiday file contains no years");
+    throw new HolidayParseError(
+      "years.empty",
+      "Holiday file contains no years"
+    );
+  }
+  if (entries.length > MAX_YEARS) {
+    throw new HolidayParseError(
+      "years.tooMany",
+      `Holiday file contains too many years (max ${MAX_YEARS})`
+    );
   }
 
-  return entries.map(parseHolidayYear);
+  const years = entries.map(parseHolidayYear);
+  const seenYears = new Set<number>();
+
+  for (const year of years) {
+    if (seenYears.has(year.year)) {
+      throw new HolidayParseError(
+        "year.duplicate",
+        `Holiday file contains duplicate year ${year.year}`,
+        { year: year.year }
+      );
+    }
+    seenYears.add(year.year);
+  }
+
+  return years;
 }
 
 export function parseHolidayCache(value: unknown): CnHolidayCache | null {
