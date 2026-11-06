@@ -34,6 +34,16 @@ const CalendarTable = styled.table`
   width: 100%;
   border-spacing: 0;
   table-layout: fixed;
+
+  --calendar-month-tone-0: #5b6b7a;
+  --calendar-month-tone-1: #0f766e;
+  --calendar-month-tone-2: #7c3aed;
+
+  @media (prefers-color-scheme: dark) {
+    --calendar-month-tone-0: #9aa8b5;
+    --calendar-month-tone-1: #2dd4bf;
+    --calendar-month-tone-2: #c4b5fd;
+  }
 `;
 
 function calculateNumberOfDots(numberOfNotes) {

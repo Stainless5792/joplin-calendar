@@ -11,6 +11,7 @@ import {
   FaAngleRight,
   FaAnglesLeft,
   FaAnglesRight,
+  FaCalendarDay,
 } from "react-icons/fa6";
 
 const CalendarDate = styled(PlainText)`
@@ -29,8 +30,10 @@ const WeekBadge = styled.span`
 
 const TodayButton = styled(Button)`
   flex-grow: 0;
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
+  flex-basis: 2rem;
+  width: 2rem;
+  padding: 0.375rem 0;
+  font-size: 0.95rem;
 `;
 
 export interface CalendarControlsProps {
@@ -96,10 +99,10 @@ function CalendarControls({
           {showToday && (
             <TodayButton
               onClick={onTodayClicked}
-              aria-label="calendar-today"
+              aria-label="Go to today"
               title="Go to today"
             >
-              Today
+              <FaCalendarDay aria-hidden="true" />
             </TodayButton>
           )}
         </ButtonBar>

@@ -73,6 +73,37 @@ describe("CalendarCell holidays", () => {
     expect(screen.getByRole("cell")).toHaveTextContent(/Feb\s*17/);
   });
 
+  it("uses a stable three-tone color for month labels", () => {
+    const { unmount } = renderCell(
+      <CalendarCell
+        date={moment("2026-01-15")}
+        showDots={false}
+        showMonthLabel
+      />
+    );
+    expect(screen.getByText("Jan")).toHaveAttribute("data-month-tone", "0");
+    unmount();
+
+    renderCell(
+      <CalendarCell
+        date={moment("2026-02-15")}
+        showDots={false}
+        showMonthLabel
+      />
+    );
+    expect(screen.getByText("Feb")).toHaveAttribute("data-month-tone", "1");
+    unmount();
+
+    renderCell(
+      <CalendarCell
+        date={moment("2026-03-15")}
+        showDots={false}
+        showMonthLabel
+      />
+    );
+    expect(screen.getByText("Mar")).toHaveAttribute("data-month-tone", "2");
+  });
+
   it("tints holidays and make-up workdays differently", () => {
     const { unmount } = renderCell(
       <CalendarCell

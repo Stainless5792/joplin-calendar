@@ -89,12 +89,15 @@ const StyledCell = styled.td<{
   }
 `;
 
-const MonthLabel = styled.span`
+const MonthLabel = styled.span<{ $tone: number }>`
   display: block;
   font-size: 0.6em;
   line-height: 1;
-  opacity: 0.7;
+  font-weight: 600;
+  opacity: 0.9;
   margin-bottom: 0.1rem;
+  color: ${(props) =>
+    `var(--calendar-month-tone-${props.$tone}, var(--joplin-color))`};
 `;
 
 export interface CalendarCellProps {
@@ -134,6 +137,8 @@ function CalendarCell({
       }`
     : undefined;
 
+  const monthTone = date.month() % 3;
+
   return (
     <StyledCell
       muted={muted}
@@ -146,7 +151,13 @@ function CalendarCell({
       aria-label={date.format("YYYY-MM-DD")}
     >
       {showMonthLabel && (
-        <MonthLabel aria-hidden="true">{date.format("MMM")}</MonthLabel>
+        <MonthLabel
+          aria-hidden="true"
+          data-month-tone={monthTone}
+          $tone={monthTone}
+        >
+          {date.format("MMM")}
+        </MonthLabel>
       )}
       {date.format("D")}
       {showDots && <DotBar numberOfDots={numberOfDots ?? 0} />}

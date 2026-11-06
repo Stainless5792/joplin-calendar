@@ -121,14 +121,20 @@ describe("calendar", () => {
     const onTodayClick = jest.fn();
     const { rerender } = render(<Calendar selectedDate={date} />);
 
-    expect(screen.queryByRole("button", { name: "calendar-today" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Go to today" })).toBeNull();
 
     rerender(
       <Calendar selectedDate={date} showToday onTodayClick={onTodayClick} />
     );
 
+    const todayButton = screen.getByRole("button", {
+      name: "Go to today",
+    });
+    expect(todayButton).toHaveTextContent("");
+    expect(todayButton.querySelector("svg")).not.toBeNull();
+
     act(() => {
-      screen.getByRole("button", { name: "calendar-today" }).click();
+      todayButton.click();
     });
 
     expect(onTodayClick).toHaveBeenCalled();
